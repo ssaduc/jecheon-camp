@@ -1,3 +1,15 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1E5B4B">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="캠핑준비">
 <title>제천 캠핑 준비</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
 <style>
@@ -31,7 +43,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.wrap{max-width:640px;margin:0 auto;padding-inline:16px;padding-block:20px 56px;display:grid;gap:16px}
+.wrap{zoom:var(--ui,1);width:100%;margin:0;padding-inline:max(12px,env(safe-area-inset-left),env(safe-area-inset-right));padding-block:20px 56px;display:grid;gap:16px}
 .eyebrow{margin:0;color:var(--muted);font-size:12px;letter-spacing:.08em}
 h1{margin:2px 0 6px;font-family:var(--f-display);font-weight:400;font-size:36px;line-height:1.15;text-wrap:balance}
 .dates{margin:0;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;color:var(--muted)}
@@ -112,7 +124,14 @@ dl.sched dd{margin:0}
 .modal-box{position:relative;max-width:min(900px,100%);max-height:100%;overflow:auto;background:var(--surface);border-radius:12px;padding:12px;display:grid;gap:8px}
 .modal-box img{width:100%;height:auto;display:block;border-radius:8px}
 .modal-x{justify-self:end;min-height:36px;padding:6px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
+html{-webkit-text-size-adjust:100%}
+.zoomctl{display:inline-flex;align-items:center;gap:4px;margin-left:auto}
+.zoomctl button{min-width:40px;min-height:36px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink)}
+.zoomctl button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.zoomctl .zl{font-size:12px;color:var(--muted);margin-right:2px}
 </style>
+</head>
+<body>
 
 <main class="wrap">
   <header>
@@ -120,7 +139,7 @@ dl.sched dd{margin:0}
     <h1>제천 캠핑 준비</h1>
     <p class="dates"><span>10/9(금) 입실 13:00</span><span>10/11(일) 오픽 15:00</span><span class="dday" id="dday"></span></p>
     <div id="weather" aria-label="캠핑 기간 날씨 예보"></div>
-    <p class="links"><a href="https://jecheon.revrun.kr/" target="_blank" rel="noopener">캠핑장 공식 홈페이지</a><button type="button" class="mapbtn" data-act="map">캠핑장 지도</button><a href="tel:0436530333">043-653-0333</a><a href="tel:01033740333">010-3374-0333</a></p>
+    <p class="links"><a href="https://jecheon.revrun.kr/" target="_blank" rel="noopener">캠핑장 공식 홈페이지</a><button type="button" class="mapbtn" data-act="map">캠핑장 지도</button><a href="tel:0436530333">043-653-0333</a><a href="tel:01033740333">010-3374-0333</a><span class="zoomctl" role="group" aria-label="화면 크기"><span class="zl">화면 크기</span><button type="button" data-act="zoom-" aria-label="작게">A−</button><button type="button" data-act="zoomauto" aria-pressed="true" aria-label="자동">자동</button><button type="button" data-act="zoom+" aria-label="크게">A+</button></span></p>
   </header>
   <div id="mapmodal" class="modal" hidden data-act="mapclose" role="dialog" aria-modal="true" aria-label="캠핑장 지도">
     <div class="modal-box"><button type="button" class="modal-x" data-act="mapclose" aria-label="닫기">닫기 ✕</button>
@@ -236,7 +255,7 @@ function dday(){
 }
 function renderBanner(){
   var b=$("#banner");
-  if(mode==="local"){b.hidden=false;b.className="banner warn";b.textContent="공유 저장소에 연결되지 않아 이 기기에만 저장됩니다. 아내와 현황을 맞추려면 공유 권한으로 로그인한 상태에서 여는 링크가 필요합니다."}
+  if(mode==="local"){b.hidden=false;b.className="banner warn";b.textContent="서버 저장소에 연결하지 못해 이 기기에만 저장됩니다."}
   else if(mode==="readonly"){b.hidden=false;b.className="banner warn";b.textContent="보기 전용입니다. 체크하고 메모하려면 편집 권한(기여자)이 필요합니다."}
   else if(mode==="shared"){b.hidden=false;b.className="banner";b.textContent="공유 중입니다. 체크와 메모가 열려 있는 모든 화면에 바로 반영됩니다."}
   else{b.hidden=true}
@@ -315,12 +334,26 @@ function renderWeather(){
   el.innerHTML=h;
 }
 document.addEventListener("keydown",function(e){if(e.key==="Escape"){var m=$("#mapmodal");if(m)m.hidden=true}});
+var ZK="jecheon-camp-zoom",zoomStep=0;
+try{zoomStep=parseInt(localStorage.getItem(ZK)||"0",10)||0}catch(e){}
+function applyZoom(){
+  var vw=window.innerWidth||document.documentElement.clientWidth||400;
+  var auto=Math.min(1.8,Math.max(1,1+(vw-400)/700));
+  var ui=Math.min(3,Math.max(.8,auto*Math.pow(1.15,zoomStep)));
+  document.documentElement.style.setProperty("--ui",ui.toFixed(3));
+  var a=document.querySelector('[data-act="zoomauto"]');if(a)a.setAttribute("aria-pressed",String(zoomStep===0));
+}
+function setZoom(n){zoomStep=Math.max(-2,Math.min(5,n));try{localStorage.setItem(ZK,String(zoomStep))}catch(e){}applyZoom()}
+window.addEventListener("resize",applyZoom);applyZoom();
 function renderAll(){renderBanner();renderProgress();renderFilters();renderList();renderAdd()}
 
 document.addEventListener("click",function(e){
   var el=e.target.closest("[data-act]");if(!el)return;
   var act=el.dataset.act,li=el.closest("[data-id]"),id=li?li.dataset.id:null;
   if(act==="filter"){filter=el.dataset.v;if(filter!=="all")collapsed.clear();renderFilters();renderList();return}
+  if(act==="zoom+"){setZoom(zoomStep+1);return}
+  if(act==="zoom-"){setZoom(zoomStep-1);return}
+  if(act==="zoomauto"){setZoom(0);return}
   if(act==="map"){$("#mapmodal").hidden=false;return}
   if(act==="mapclose"){if(e.target===el||el.classList.contains("modal-x"))$("#mapmodal").hidden=true;return}
   if(act==="all"){if(collapsed.size)collapsed.clear();else CATS.forEach(function(c){collapsed.add(c)});renderFilters();renderList();return}
@@ -385,7 +418,7 @@ async function init(){
     return fetch("/api/items",{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("load");return r.json()})
       .then(function(j){failed=0;if(inflight===0&&mode!=="shared"){mode="shared";renderAll()}apply(j.items||{})});
   }
-  try{await poll()}catch(e){mode="local";lsLoad();renderAll();toast("서버에 연결하지 못해 이 기기에만 저장됩니다.");return}
+  try{await poll()}catch(e){mode="local";lsLoad();renderAll();var bn=$("#banner");bn.textContent="서버 저장소에 연결하지 못해 이 기기에만 저장됩니다. (Vercel에서 Upstash Redis 연결 후 재배포가 필요합니다. 확인: 주소 뒤에 /api/items 를 붙여 열어보세요.)";return}
   mode="shared";renderAll();
   setInterval(function(){poll().catch(function(){if(++failed===3)toast("연결이 불안정합니다. 잠시 후 다시 시도합니다.")})},4000);
   document.addEventListener("visibilitychange",function(){if(!document.hidden)poll().catch(function(){})});
@@ -395,3 +428,6 @@ async function init(){
 init();
 })();
 </script>
+
+</body>
+</html>
