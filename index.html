@@ -129,17 +129,33 @@ html{-webkit-text-size-adjust:100%}
 .zoomctl button{min-width:40px;min-height:36px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink)}
 .zoomctl button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .zoomctl .zl{font-size:12px;color:var(--muted);margin-right:2px}
+header{position:relative}
+header .zoomctl{position:absolute;top:-4px;right:0;margin:0;gap:3px}
+header .zoomctl button{min-width:34px;min-height:30px;padding:2px 8px;font-size:12px}
+.wx{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+.wx-day{padding:8px 9px!important}
+.wx-t{font-size:19px!important;white-space:nowrap}
+.wx-s{font-size:12px!important}
+.wx-r{font-size:11px!important}
+.pill{font-size:11px!important;padding:2px 7px!important}
+.links{flex-wrap:nowrap!important;gap:5px!important}
+.links a,.links .mapbtn{flex:1 1 auto;min-width:0;justify-content:center;white-space:nowrap;padding:6px 6px!important;font-size:12px;min-height:34px!important}
+#wxnote{margin:4px 0 0}
+.wrap{grid-template-columns:minmax(0,1fr)}
+.links a,.links .mapbtn{font-size:11.5px!important;padding:6px 3px!important;letter-spacing:-.02em}
+.links a[href^="tel"]{flex:1.6 1 auto}
 </style>
 </head>
 <body>
 
 <main class="wrap">
   <header>
+    <span class="zoomctl" role="group" aria-label="화면 크기"><button type="button" data-act="zoom-" aria-label="작게">A−</button><button type="button" data-act="zoomauto" aria-pressed="true" aria-label="자동">자동</button><button type="button" data-act="zoom+" aria-label="크게">A+</button></span>
     <p class="eyebrow">제천워터파크캠핑랜드 · 2박 3일</p>
     <h1>제천 캠핑 준비</h1>
     <p class="dates"><span>10/9(금) 입실 13:00</span><span>10/11(일) 오픽 15:00</span><span class="dday" id="dday"></span></p>
     <div id="weather" aria-label="캠핑 기간 날씨 예보"></div>
-    <p class="links"><a href="https://jecheon.revrun.kr/" target="_blank" rel="noopener">캠핑장 공식 홈페이지</a><button type="button" class="mapbtn" data-act="map">캠핑장 지도</button><a href="tel:0436530333">043-653-0333</a><a href="tel:01033740333">010-3374-0333</a><span class="zoomctl" role="group" aria-label="화면 크기"><span class="zl">화면 크기</span><button type="button" data-act="zoom-" aria-label="작게">A−</button><button type="button" data-act="zoomauto" aria-pressed="true" aria-label="자동">자동</button><button type="button" data-act="zoom+" aria-label="크게">A+</button></span></p>
+    <p class="links"><a href="https://jecheon.revrun.kr/" target="_blank" rel="noopener">홈페이지</a><button type="button" class="mapbtn" data-act="map">지도</button><a href="tel:0436530333">043-653-0333</a><a href="tel:01033740333">010-3374-0333</a></p>
   </header>
   <div id="mapmodal" class="modal" hidden data-act="mapclose" role="dialog" aria-modal="true" aria-label="캠핑장 지도">
     <div class="modal-box"><button type="button" class="modal-x" data-act="mapclose" aria-label="닫기">닫기 ✕</button>
@@ -172,6 +188,7 @@ html{-webkit-text-size-adjust:100%}
     </dl>
     <p class="hint">연휴 교통은 변동이 크니 일요일 아침에 내비 소요시간을 보고 출발 시각을 앞당기세요.</p>
   </section>
+<p class="wx-note" id="wxnote"></p>
 </main>
 <div id="toast" role="status" hidden></div>
 
@@ -325,12 +342,13 @@ function renderAdd(){
 function dlabel(s){var p=s.split("-"),d=new Date(+p[0],+p[1]-1,+p[2]);return (+p[1])+"/"+(+p[2])+"("+"일월화수목금토".charAt(d.getDay())+")"}
 function renderWeather(){
   var el=$("#weather"),w=weather;
-  if(!w||!w.days||!w.days.length){el.innerHTML="";return}
+  if(!w||!w.days||!w.days.length){el.innerHTML="";$("#wxnote").innerHTML="";return}
   var h='<div class="wx">'+w.days.map(function(d){
     var p=Math.max(Number(d.pop)||0,Number(d.kmaPop)||0),cls=p>=60?"bad":(p>=30?"warn":"ok");
     return '<div class="wx-day"><span class="wx-d">'+esc(dlabel(d.date))+'</span><span class="wx-t">'+Math.round(d.tmin)+'° / '+Math.round(d.tmax)+'°</span><span class="wx-s">'+esc(d.sky||"")+'</span><span class="wx-r"><span class="pill '+cls+'">강수 '+(Number(d.pop)||0)+'%</span>'+(d.kma?'<span>기상청 '+esc(d.kma)+' '+(Number(d.kmaPop)||0)+'%</span>':'')+'</span></div>';
   }).join("")+'</div>';
-  h+='<p class="wx-note">'+esc(w.source||"")+' · 기준 '+esc(w.asOf||"")+'. '+(w.live?'접속할 때 불러온 예보입니다. 기상청 단기예보와 다를 수 있으니 ':'저장된 예보입니다. 지금 예보는 ')+' <a href="https://www.weather.go.kr/w/forecast/overall/mid-term.do" target="_blank" rel="noopener">기상청</a> 또는 <a href="https://www.accuweather.com/ko/kr/jecheon/223116/10-day-weather-forecast/223116" target="_blank" rel="noopener">AccuWeather</a>에서 확인하세요.</p>';
+  var nh=esc(w.source||"")+' · 기준 '+esc(w.asOf||"")+'. '+(w.live?'접속할 때 불러온 예보입니다. 기상청 단기예보와 다를 수 있으니 ':'저장된 예보입니다. 지금 예보는 ')+' <a href="https://www.weather.go.kr/w/forecast/overall/mid-term.do" target="_blank" rel="noopener">기상청</a> 또는 <a href="https://www.accuweather.com/ko/kr/jecheon/223116/10-day-weather-forecast/223116" target="_blank" rel="noopener">AccuWeather</a>에서 확인하세요.</p>';
+  $("#wxnote").innerHTML=nh;
   el.innerHTML=h;
 }
 document.addEventListener("keydown",function(e){if(e.key==="Escape"){var m=$("#mapmodal");if(m)m.hidden=true}});
