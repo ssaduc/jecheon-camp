@@ -144,6 +144,15 @@ header .zoomctl button{min-width:34px;min-height:30px;padding:2px 8px;font-size:
 .wrap{grid-template-columns:minmax(0,1fr)}
 .links a,.links .mapbtn{font-size:11.5px!important;padding:6px 3px!important;letter-spacing:-.02em}
 .links a[href^="tel"]{flex:1.6 1 auto}
+.who.wh{background:var(--h-soft);color:var(--h);font-weight:600}
+.who.ww{background:var(--w-soft);color:var(--w);font-weight:600}
+.seg button[data-who="남편"][aria-pressed="true"],.fbtn[data-who="남편"][aria-pressed="true"]{background:var(--h);border-color:var(--h);color:#fff}
+.seg button[data-who="아내"][aria-pressed="true"],.fbtn[data-who="아내"][aria-pressed="true"]{background:var(--w);border-color:var(--w);color:#fff}
+.fbtn[data-who="남편"]{border-color:var(--h);color:var(--h)}
+.fbtn[data-who="아내"]{border-color:var(--w);color:var(--w)}
+:root{--h:#2B5FA8;--h-soft:#DCE8F7;--w:#B0346A;--w-soft:#F9DEE9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--h:#8DB8F0;--h-soft:#1B2D45;--w:#F29BBB;--w-soft:#43202F}}
+:root[data-theme="dark"]{--h:#8DB8F0;--h-soft:#1B2D45;--w:#F29BBB;--w-soft:#43202F}
 </style>
 </head>
 <body>
@@ -173,7 +182,7 @@ header .zoomctl button{min-width:34px;min-height:30px;padding:2px 8px;font-size:
       <input type="text" id="add-name" maxlength="80" autocomplete="off" placeholder="예: 보조배터리">
       <div class="grid">
         <div><label class="lbl" for="add-cat">분류</label><select id="add-cat"></select></div>
-        <div><label class="lbl" for="add-req">중요도</label><select id="add-req"><option>필수</option><option selected>권장</option><option>선택</option></select></div>
+        <div><label class="lbl" for="add-who">담당</label><select id="add-who"><option value="">미정</option><option value="남편">남편</option><option value="아내">아내</option></select></div>
       </div>
       <button class="primary" type="submit" id="add-btn">추가</button>
     </form>
@@ -246,10 +255,10 @@ function patchItem(id,patch){
   if(mode==="local"){lsSave();return}
   enqueue(id,function(){return db.doc("items/"+id).update(patch)}).catch(onWriteErr);
 }
-function addItem(cat,name,req){
+function addItem(cat,name,who){
   var max=0;items.forEach(function(d){if(d.order>max&&d.order<9999)max=d.order});
   var id="u"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-  var doc=norm({cat:cat,name:name,req:req,note:"",done:false,who:"",order:max+1});
+  var doc=norm({cat:cat,name:name,req:"권장",note:"",done:false,who:WHO.indexOf(who)>=0?who:"",order:max+1});
   items.set(id,doc);collapsed.delete(cat);
   renderAll();
   if(mode==="local"){lsSave();return}
@@ -278,22 +287,19 @@ function renderBanner(){
   else{b.hidden=true}
 }
 function renderProgress(){
-  var a=list(),must=a.filter(function(i){return i.req==="필수"}),md=must.filter(function(i){return i.done}).length;
-  var done=a.filter(function(i){return i.done}).length;
-  var pct=must.length?Math.round(md/must.length*100):(a.length?Math.round(done/a.length*100):0);
-  var left=must.length-md;
-  var h='<div class="prog-top"><span class="prog-num">'+md+'/'+must.length+'</span><span class="prog-lbl">필수 항목 준비됨</span></div>';
-  h+='<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+pct+'" aria-label="필수 항목 진행률"><i style="width:'+pct+'%"></i></div>';
-  h+='<p class="prog-sub">'+(mode==="loading"?"불러오는 중":(must.length&&left===0?"필수 항목을 모두 준비했습니다. ":"남은 필수 "+left+"개 · "))+'전체 '+done+'/'+a.length+'</p>';
+  var a=list(),done=a.filter(function(i){return i.done}).length;
+  var pct=a.length?Math.round(done/a.length*100):0,left=a.length-done;
+  var h='<div class="prog-top"><span class="prog-num">'+done+'/'+a.length+'</span><span class="prog-lbl">항목 준비됨</span></div>';
+  h+='<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+pct+'" aria-label="준비 진행률"><i style="width:'+pct+'%"></i></div>';
+  h+='<p class="prog-sub">'+(mode==="loading"?"불러오는 중":(a.length&&left===0?"모두 준비했습니다.":"남은 항목 "+left+"개"))+'</p>';
   $("#progress").innerHTML=h;
 }
 function renderFilters(){
-  var defs=[["all","전체"],["todo","미완료"],["must","필수 미완료"],["남편","남편 담당"],["아내","아내 담당"]];
-  $("#filters").innerHTML=defs.map(function(f){return '<button type="button" class="fbtn" data-act="filter" data-v="'+esc(f[0])+'" aria-pressed="'+(filter===f[0])+'">'+esc(f[1])+'</button>'}).join("")+'<button type="button" class="fbtn" data-act="all">'+(collapsed.size?"모두 펼치기":"모두 접기")+'</button>';
+  var defs=[["all","전체"],["todo","미완료"],["남편","남편 담당"],["아내","아내 담당"]];
+  $("#filters").innerHTML=defs.map(function(f){return '<button type="button" class="fbtn" data-act="filter" data-v="'+esc(f[0])+'" data-who="'+(f[0]==="남편"||f[0]==="아내"?esc(f[0]):"")+'" aria-pressed="'+(filter===f[0])+'">'+esc(f[1])+'</button>'}).join("")+'<button type="button" class="fbtn" data-act="all">'+(collapsed.size?"모두 펼치기":"모두 접기")+'</button>';
 }
 function pass(i){
   if(filter==="todo")return !i.done;
-  if(filter==="must")return i.req==="필수"&&!i.done;
   if(filter==="남편"||filter==="아내")return i.who===filter;
   return true;
 }
@@ -301,13 +307,12 @@ function itemHTML(it){
   var dis=canWrite()?"":" disabled",ro=canWrite()?"":" readonly",open=openId===it.id,i=esc(it.id);
   var h='<li class="item'+(it.done?' is-done':'')+'" data-id="'+i+'">';
   h+='<button type="button" class="chk" role="checkbox" aria-checked="'+it.done+'" aria-label="'+esc(it.name)+' 준비 완료" data-act="toggle"'+dis+'><span aria-hidden="true">'+(it.done?'✓':'')+'</span></button>';
-  h+='<div><button type="button" class="head" data-act="open" aria-expanded="'+open+'"><span class="nm">'+esc(it.name)+'</span><span class="meta"><span class="tag'+(it.req==="필수"?' t-must':'')+'">'+esc(it.req)+'</span>'+(it.who?'<span class="who">'+esc(it.who)+'</span>':'')+'</span>'+((it.note&&!open)?'<span class="nt">'+esc(it.note)+'</span>':'')+'</button>';
+  h+='<div><button type="button" class="head" data-act="open" aria-expanded="'+open+'"><span class="nm">'+esc(it.name)+'</span><span class="meta">'+(it.who?'<span class="who '+(it.who==="남편"?"wh":"ww")+'">'+esc(it.who)+'</span>':'')+'</span>'+((it.note&&!open)?'<span class="nt">'+esc(it.note)+'</span>':'')+'</button>';
   if(open){
     h+='<div class="detail"><div><label class="lbl" for="name-'+i+'">항목 이름</label><input type="text" id="name-'+i+'" maxlength="80" value="'+esc(it.name)+'" data-field="name"'+ro+'></div>';
     h+='<div class="row"><label class="lbl" for="cat-'+i+'">분류</label><select id="cat-'+i+'" data-field="cat"'+dis+'>'+CATS.map(function(c){return '<option'+(it.cat===c?' selected':'')+'>'+esc(c)+'</option>'}).join("")+'</select></div>';
     h+='<div><label class="lbl" for="note-'+i+'">메모</label><textarea id="note-'+i+'" rows="3" maxlength="500" data-field="note"'+ro+'>'+esc(it.note)+'</textarea></div>';
-    h+='<div class="row"><span class="lbl">담당</span><div class="seg">'+WHO.map(function(w){return '<button type="button" data-act="who" data-v="'+esc(w)+'" aria-pressed="'+(it.who===w)+'"'+dis+'>'+(w||"미정")+'</button>'}).join("")+'</div></div>';
-    h+='<div class="row"><label class="lbl" for="req-'+i+'">중요도</label><select id="req-'+i+'" data-field="req"'+dis+'>'+REQS.map(function(r){return '<option'+(it.req===r?' selected':'')+'>'+r+'</option>'}).join("")+'</select></div>';
+    h+='<div class="row"><span class="lbl">담당</span><div class="seg">'+WHO.map(function(w){return '<button type="button" data-act="who" data-v="'+esc(w)+'" data-who="'+esc(w)+'" aria-pressed="'+(it.who===w)+'"'+dis+'>'+(w||"미정")+'</button>'}).join("")+'</div></div>';
     if(canWrite()){
       h+='<div class="row">'+(confirmId===it.id?'<button type="button" class="danger yes" data-act="del-yes">삭제 확인</button><button type="button" class="ghost" data-act="del-no">취소</button>':'<button type="button" class="danger" data-act="del">항목 삭제</button>')+'</div>';
     }
@@ -337,7 +342,7 @@ function renderList(){
 }
 function renderAdd(){
   var on=canWrite();
-  ["#add-name","#add-cat","#add-req","#add-btn"].forEach(function(s){$(s).disabled=!on});
+  ["#add-name","#add-cat","#add-who","#add-btn"].forEach(function(s){$(s).disabled=!on});
 }
 function dlabel(s){var p=s.split("-"),d=new Date(+p[0],+p[1]-1,+p[2]);return (+p[1])+"/"+(+p[2])+"("+"일월화수목금토".charAt(d.getDay())+")"}
 function renderWeather(){
@@ -401,7 +406,7 @@ $("#addform").addEventListener("submit",function(e){
   e.preventDefault();
   var n=$("#add-name").value.trim();
   if(!n||!canWrite())return;
-  addItem($("#add-cat").value,n,$("#add-req").value);
+  addItem($("#add-cat").value,n,$("#add-who").value);
   $("#add-name").value="";
   toast("추가했습니다.");
 });
